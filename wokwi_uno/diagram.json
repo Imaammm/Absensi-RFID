@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "author": "Smart Attendance 2FA",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 60, "left": 120, "attrs": {} },
+    {
+      "type": "wokwi-lcd1602",
+      "id": "lcd",
+      "top": -120,
+      "left": 130,
+      "attrs": { "pins": "i2c" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": -90,
+      "left": 370,
+      "attrs": { "volume": "0.1" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_green",
+      "top": 120,
+      "left": 370,
+      "attrs": { "color": "green", "label": "HADIR" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_red",
+      "top": 190,
+      "left": 370,
+      "attrs": { "color": "red", "label": "DITOLAK" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_green",
+      "top": 150,
+      "left": 430,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_red",
+      "top": 220,
+      "left": 430,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_budi",
+      "top": 90,
+      "left": -60,
+      "attrs": { "color": "blue", "label": "1. Budi (E2000019)" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_siti",
+      "top": 160,
+      "left": -60,
+      "attrs": { "color": "green", "label": "2. Siti (A134F90B)" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_dimas",
+      "top": 230,
+      "left": -60,
+      "attrs": { "color": "orange", "label": "3. Dimas (8833DC1A)" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_unknown",
+      "top": 300,
+      "left": -60,
+      "attrs": { "color": "red", "label": "4. Asing (UNKNOWN_99X)" }
+    }
+  ],
+  "connections": [
+    [ "uno:GND.1", "lcd:GND", "black", [ "v0" ] ],
+    [ "uno:5V", "lcd:VCC", "red", [ "v0" ] ],
+    [ "uno:A4", "lcd:SDA", "blue", [ "v0" ] ],
+    [ "uno:A5", "lcd:SCL", "yellow", [ "v0" ] ],
+
+    [ "uno:GND.1", "buzzer:1", "black", [ "v0" ] ],
+    [ "uno:8", "buzzer:2", "purple", [ "v0" ] ],
+
+    [ "uno:12", "led_green:A", "green", [ "v0" ] ],
+    [ "led_green:K", "r_green:1", "green", [ "v0" ] ],
+    [ "r_green:2", "uno:GND.2", "black", [ "v0" ] ],
+
+    [ "uno:11", "led_red:A", "red", [ "v0" ] ],
+    [ "led_red:K", "r_red:1", "red", [ "v0" ] ],
+    [ "r_red:2", "uno:GND.2", "black", [ "v0" ] ],
+
+    [ "uno:2", "btn_budi:2.r", "blue", [ "v0" ] ],
+    [ "uno:GND.1", "btn_budi:1.l", "black", [ "v0" ] ],
+
+    [ "uno:3", "btn_siti:2.r", "green", [ "v0" ] ],
+    [ "uno:GND.1", "btn_siti:1.l", "black", [ "v0" ] ],
+
+    [ "uno:4", "btn_dimas:2.r", "orange", [ "v0" ] ],
+    [ "uno:GND.1", "btn_dimas:1.l", "black", [ "v0" ] ],
+
+    [ "uno:5", "btn_unknown:2.r", "red", [ "v0" ] ],
+    [ "uno:GND.1", "btn_unknown:1.l", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

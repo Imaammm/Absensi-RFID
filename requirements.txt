@@ -1,0 +1,7 @@
+numpy<2
+flask>=3.0.0
+flask-socketio>=5.3.6
+opencv-contrib-python==4.11.0.86
+pyserial>=3.5
+pillow>=10.0.0
+python-docx>=1.1.0

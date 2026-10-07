@@ -1,0 +1,47 @@
+# =========================================================================
+# GITIGNORE: Smart Attendance 2FA (RFID + Face Recognition)
+# =========================================================================
+
+# 1. Virtual Environment (UKURAN BESAR - JANGAN DIPUSH!)
+venv/
+env/
+ENV/
+.venv/
+
+# 2. Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# 3. Data Pribadi, Foto Wajah, & Database Aktif (PRIVASI & DINAMIS)
+# Database SQLite (akan digenerate otomatis saat app pertama kali dijalankan)
+data/attendance.db
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# Foto wajah fisik pengguna (Data privasi biometrik)
+data/faces/*
+!data/faces/.gitkeep
+
+# Model AI hasil training lokal (Akan otomatis digenerate ulang saat enroll)
+data/models/*.yml
+!data/models/.gitkeep
+
+# 4. File Temporary Sistem & Text Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# File temporary Microsoft Office / Word / Excel
+~$*
+*.tmp
+
+# 5. Log Files
+*.log

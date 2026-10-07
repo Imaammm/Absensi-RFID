@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal | Smart Attendance 2FA</title>
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Socket.IO Client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-cyan-500 selection:text-white antialiased">
+    <!-- TOP NAVBAR -->
+    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-40 px-6 py-3.5 shadow-lg backdrop-blur">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 border border-cyan-400/30">
+                    <i class="fa-solid fa-gauge-high text-xl text-white"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-base font-bold text-white tracking-tight">Portal Manajemen Admin</h1>
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">CONTROL PANEL</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Smart Attendance 2FA (RFID + Biometric Face Recognition)</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="hidden sm:flex items-center gap-2 bg-slate-950/70 px-3.5 py-1.5 rounded-xl border border-slate-800 text-xs">
+                    <i class="fa-regular fa-clock text-cyan-400"></i>
+                    <span id="navClock" class="font-mono font-bold text-slate-200">00:00:00</span>
+                </div>
+                <a href="/" target="_blank" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition">
+                    <i class="fa-solid fa-desktop"></i>
+                    <span>Buka Layar Kiosk</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl w-full mx-auto p-6 flex-1 space-y-6">
+        <!-- NAVIGATION TABS -->
+        <div class="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
+            <button onclick="switchTab('dashboard')" id="tabBtn-dashboard" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Dashboard Ringkasan</span>
+            </button>
+            <button onclick="switchTab('employees')" id="tabBtn-employees" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800">
+                <i class="fa-solid fa-users"></i>
+                <span>Master Karyawan</span>
+            </button>
+            <button onclick="switchTab('reports')" id="tabBtn-reports" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800">
+                <i class="fa-solid fa-file-lines"></i>
+                <span>Laporan & Log Absensi</span>
+            </button>
+            <button onclick="switchTab('settings')" id="tabBtn-settings" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Pengaturan Sistem</span>
+            </button>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 1: DASHBOARD RINGKASAN -->
+        <!-- ============================================================= -->
+        <section id="tabContent-dashboard" class="space-y-6">
+            <!-- STATS TILES -->
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="glass-panel rounded-2xl p-4 shadow-lg">
+                    <div class="flex items-center justify-between text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Total Karyawan</span>
+                        <i class="fa-solid fa-users text-cyan-400 text-sm"></i>
+                    </div>
+                    <div id="statTotalEmployees" class="text-2xl font-extrabold font-mono text-white">0</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Terdaftar aktif di sistem</div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-4 shadow-lg">
+                    <div class="flex items-center justify-between text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Total Scan Hari Ini</span>
+                        <i class="fa-solid fa-qrcode text-indigo-400 text-sm"></i>
+                    </div>
+                    <div id="statTotalScans" class="text-2xl font-extrabold font-mono text-indigo-400">0</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Aktivitas RFID 2FA</div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-4 shadow-lg">
+                    <div class="flex items-center justify-between text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Hadir Tepat Waktu</span>
+                        <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+                    </div>
+                    <div id="statHadir" class="text-2xl font-extrabold font-mono text-emerald-400">0</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Sesuai jam masuk</div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-4 shadow-lg">
+                    <div class="flex items-center justify-between text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Terlambat</span>
+                        <i class="fa-solid fa-triangle-exclamation text-amber-400 text-sm"></i>
+                    </div>
+                    <div id="statTerlambat" class="text-2xl font-extrabold font-mono text-amber-400">0</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Melebihi toleransi</div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-4 shadow-lg col-span-2 lg:col-span-1">
+                    <div class="flex items-center justify-between text-slate-400 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider">Ditolak / Asing</span>
+                        <i class="fa-solid fa-ban text-rose-400 text-sm"></i>
+                    </div>
+                    <div id="statDitolak" class="text-2xl font-extrabold font-mono text-rose-400">0</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Wajah / RFID invalid</div>
+                </div>
+            </div>
+
+            <!-- LIVE ACTIVITY FEED & INFO BANNER -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- LATEST ATTENDANCE LOGS -->
+                <div class="lg:col-span-2 glass-panel rounded-2xl p-5 shadow-xl">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i>
+                            <h3 class="text-sm font-bold text-white">Aktivitas Absensi Terbaru Hari Ini</h3>
+                        </div>
+                        <button onclick="loadDashboardData()" class="text-xs text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1">
+                            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="text-slate-400 border-b border-slate-800 uppercase font-semibold">
+                                    <th class="py-2.5 px-3">Waktu</th>
+                                    <th class="py-2.5 px-3">Nama Karyawan</th>
+                                    <th class="py-2.5 px-3">Departemen</th>
+                                    <th class="py-2.5 px-3">Tipe</th>
+                                    <th class="py-2.5 px-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboardRecentLogs" class="divide-y divide-slate-800/60">
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-slate-500">Memuat riwayat kehadiran...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SYSTEM STATUS SUMMARY & HARDWARE INFO -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+                        <i class="fa-solid fa-microchip text-indigo-400"></i>
+                        <h3 class="text-sm font-bold text-white">Status Perangkat & AI Biometrik</h3>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-camera text-cyan-400"></i>
+                                <span>Kamera Biometrik</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AKTIF (CV2)</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-id-card-clip text-indigo-400"></i>
+                                <span>RFID Hardware Reader</span>
+                            </div>
+                            <span id="dashRfidStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">SIMULASI AKTIF</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-brain text-purple-400"></i>
+                                <span>Mesin AI Pengenalan Wajah</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">OpenCV LBPH</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-database text-amber-400"></i>
+                                <span>Penyimpanan Database</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">SQLite Persisten</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button onclick="switchTab('employees'); openAddEmployeeModal();" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>Daftarkan Karyawan Baru</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- TAB 2: MASTER KARYAWAN -->
+        <!-- ============================================================= -->
+        <section id="tabContent-employees" class="hidden space-y-4">
+            <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                <!-- TOOLBAR -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+                    <div>
+                        <h2 class="text-base font-bold text-white">Master Data Karyawan</h2>
+                        <p class="text-xs text-slate-400">Kelola informasi karyawan, pasangkan kartu RFID fisik, dan daftarkan foto wajah biometrik</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" id="employeeSearchInput" oninput="loadEmployeesTable()" placeholder="Cari nama, NIK, atau UID..." class="pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-cyan-400 w-48 sm:w-60">
+                        </div>
+
+                        <select id="employeeDeptFilter" onchange="loadEmployeesTable()" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+                            <option value="ALL">Semua Departemen</option>
+                        </select>
+
+                        <button onclick="openAddEmployeeModal()" class="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Tambah Karyawan</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TABLE -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 bg-slate-950/40">
+                                <th class="py-3 px-4 rounded-l-lg">Karyawan</th>
+                                <th class="py-3 px-4">NIK</th>
+                                <th class="py-3 px-4">Departemen & Jabatan</th>
+                                <th class="py-3 px-4">UID Kartu RFID</th>
+                                <th class="py-3 px-4">Biometrik Wajah</th>
+                                <th class="py-3 px-4 text-center rounded-r-lg">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody" class="divide-y divide-slate-800/60">
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-slate-500">Memuat data karyawan...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- TAB 3: LAPORAN & RIWAYAT ABSENSI -->
+        <!-- ============================================================= -->
+        <section id="tabContent-reports" class="hidden space-y-4">
+            <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                <!-- TOOLBAR & FILTERS -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-white">Laporan & Riwayat Kehadiran</h2>
+                        <p class="text-xs text-slate-400">Rekapitulasi absensi karyawan tersimpan di database SQLite persisten</p>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportLogsToBackendCSV()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-600/20">
+                            <i class="fa-solid fa-file-csv"></i>
+                            <span>Ekspor File CSV</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FILTER ROW -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 bg-slate-950/50 p-3.5 rounded-xl border border-slate-800">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Rentang Tanggal</label>
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="reportStartDate" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200">
+                            <span class="text-xs text-slate-500">s/d</span>
+                            <input type="date" id="reportEndDate" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Departemen</label>
+                        <select id="reportDeptFilter" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200">
+                            <option value="ALL">Semua Departemen</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Status Kehadiran</label>
+                        <select id="reportStatusFilter" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200">
+                            <option value="ALL">Semua Status</option>
+                            <option value="hadir">Hadir Tepat Waktu</option>
+                            <option value="terlambat">Terlambat</option>
+                            <option value="pulang">Absen Pulang</option>
+                            <option value="ditolak">Ditolak</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-end gap-2">
+                        <button onclick="applyReportFilters()" class="flex-1 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-filter"></i> Filter
+                        </button>
+                        <button onclick="resetReportFilters()" class="py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ATTENDANCE TABLE -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 bg-slate-950/40">
+                                <th class="py-3 px-4 rounded-l-lg">Tanggal & Waktu</th>
+                                <th class="py-3 px-4">UID Kartu</th>
+                                <th class="py-3 px-4">Nama Karyawan</th>
+                                <th class="py-3 px-4">Departemen & Jabatan</th>
+                                <th class="py-3 px-4">Tipe Absen</th>
+                                <th class="py-3 px-4">Kecocokan AI</th>
+                                <th class="py-3 px-4 text-center rounded-r-lg">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody" class="divide-y divide-slate-800/60">
+                            <tr>
+                                <td colspan="7" class="py-8 text-center text-slate-500">Memuat log kehadiran...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- TAB 4: PENGATURAN SISTEM -->
+        <!-- ============================================================= -->
+        <section id="tabContent-settings" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- FORM JAM KERJA & LOGIKA ABSENSI -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex items-center gap-2 pb-3 border-b border-slate-800">
+                        <i class="fa-solid fa-business-time text-cyan-400"></i>
+                        <h3 class="text-sm font-bold text-white">Jam Kerja & Toleransi Absensi</h3>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <label class="block font-semibold text-slate-300 mb-1">Jam Masuk Kantor</label>
+                            <input type="time" id="settingWorkStart" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                            <p class="text-[11px] text-slate-500 mt-1">Waktu dimulainya jam kerja standar</p>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-slate-300 mb-1">Toleransi Keterlambatan (Menit)</label>
+                            <input type="number" id="settingTolerance" min="0" max="120" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                            <p class="text-[11px] text-slate-500 mt-1">Absen setelah jam masuk + menit ini akan ditandai Terlambat</p>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-slate-300 mb-1">Jam Pulang Kantor</label>
+                            <input type="time" id="settingWorkEnd" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                            <p class="text-[11px] text-slate-500 mt-1">Batas waktu dimulainya absensi pulang</p>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-slate-300 mb-1">Mode Kiosk Standar</label>
+                            <select id="settingKioskMode" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                                <option value="auto">Auto (Otomatis Masuk jika belum absen, Pulang jika sudah)</option>
+                                <option value="check_in">Khusus Absen Masuk</option>
+                                <option value="check_out">Khusus Absen Pulang</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FORM HARDWARE RFID & BIOMETRIK -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex items-center gap-2 pb-3 border-b border-slate-800">
+                        <i class="fa-solid fa-sliders text-indigo-400"></i>
+                        <h3 class="text-sm font-bold text-white">Hardware RFID & Sensitivitas Wajah</h3>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/70 border border-slate-800">
+                            <div>
+                                <div class="font-semibold text-slate-200">Mode Simulasi RFID</div>
+                                <div class="text-[11px] text-slate-400">Aktifkan untuk demo/pengujian tanpa perangkat fisik</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="settingSimMode" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block font-semibold text-slate-300 mb-1">Pilihan Kamera (Webcam)</label>
+                                <select id="settingCameraIndex" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                                    <option value="0">Kamera 0 (Internal Laptop)</option>
+                                    <option value="1">Kamera 1 (Webcam USB Eksternal)</option>
+                                    <option value="2">Kamera 2 (Webcam USB 2)</option>
+                                    <option value="3">Kamera 3 (Webcam USB 3)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-300 mb-1">Port Serial (COM)</label>
+                                <input type="text" id="settingSerialPort" placeholder="COM3" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-300 mb-1">Baudrate</label>
+                                <select id="settingSerialBaud" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                                    <option value="9600">9600 bps</option>
+                                    <option value="19200">19200 bps</option>
+                                    <option value="115200">115200 bps</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="font-semibold text-slate-300">Ambang Batas Pengenalan Wajah</label>
+                                <span id="faceThresholdValueText" class="font-mono font-bold text-cyan-400">60%</span>
+                            </div>
+                            <input type="range" id="settingFaceThreshold" min="40" max="95" step="1" oninput="document.getElementById('faceThresholdValueText').innerText = this.value + '%'" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+                            <p class="text-[11px] text-slate-500 mt-1">Tingkat confidence minimal untuk mengizinkan akses biometrik</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-3">
+                        <button onclick="saveSystemSettings()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Simpan Konfigurasi Sistem</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============================================================= -->
+    <!-- MODAL: TAMBAH / EDIT KARYAWAN -->
+    <!-- ============================================================= -->
+    <div id="employeeModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 id="employeeModalTitle" class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-user-pen text-cyan-400"></i>
+                    <span>Tambah Data Karyawan</span>
+                </h3>
+                <button onclick="closeEmployeeModal()" class="text-slate-400 hover:text-slate-200 text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="employeeForm" onsubmit="handleEmployeeSubmit(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="empFormId">
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Nomor Induk Karyawan (NIK) *</label>
+                    <input type="text" id="empFormNik" required placeholder="Contoh: EMP005" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Nama Lengkap *</label>
+                    <input type="text" id="empFormName" required placeholder="Nama lengkap karyawan" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Departemen *</label>
+                    <input type="text" id="empFormDept" required placeholder="Contoh: IT & Engineering" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Jabatan / Role</label>
+                    <input type="text" id="empFormRole" placeholder="Contoh: Frontend Developer" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 text-xs focus:outline-none focus:border-cyan-400">
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="font-semibold text-slate-300">UID Kartu RFID</label>
+                        <button type="button" id="btnListenRfid" onclick="startListeningRfid()" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1">
+                            <i class="fa-solid fa-tower-broadcast"></i> Scan Kartu
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="empFormRfid" placeholder="Contoh: E2000019" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-mono text-xs focus:outline-none focus:border-cyan-400 uppercase">
+                        <div id="rfidScanningIndicator" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-[10px] text-cyan-400 font-bold animate-pulse">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span> Tap kartu...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-3 flex items-center gap-2">
+                    <button type="button" onclick="closeEmployeeModal()" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-1 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition shadow-md shadow-cyan-500/20">
+                        Simpan Karyawan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL: PENDAFTARAN WAJAH BIOMETRIK (FACE ENROLLMENT) -->
+    <!-- ============================================================= -->
+    <div id="faceEnrollModal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-face-viewfinder text-cyan-400 text-lg"></i>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Pendaftaran Wajah Biometrik</h3>
+                        <p id="enrollEmployeeNameSubtitle" class="text-xs text-slate-400">Karyawan: Memuat...</p>
+                    </div>
+                </div>
+                <button onclick="closeFaceEnrollModal()" class="text-slate-400 hover:text-slate-200 text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- LIVE CAMERA PREVIEW FOR ENROLLMENT -->
+            <div class="relative rounded-xl overflow-hidden border-2 border-slate-800 bg-black aspect-[4/3] flex items-center justify-center">
+                <img id="enrollCamFeed" src="/video_feed" alt="Webcam Feed" class="w-full h-full object-cover">
+                <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div class="w-48 h-56 border-2 border-cyan-400/80 rounded-2xl"></div>
+                </div>
+            </div>
+
+            <!-- CAPTURE & UPLOAD CONTROLS -->
+            <div class="space-y-3 text-xs">
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <div>
+                        <div class="font-semibold text-slate-200">Sampel Wajah Terdaftar</div>
+                        <div class="text-[11px] text-slate-400">Disarankan minimal 3-5 sampel sudut wajah berbeda</div>
+                    </div>
+                    <span id="enrollSampleCountBadge" class="font-mono text-sm font-bold text-cyan-400 px-2.5 py-1 rounded-lg bg-cyan-950/60 border border-cyan-800/60">0 Sampel</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="captureFaceFromWebcam()" id="btnCaptureFace" class="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Ambil Foto via Kamera</span>
+                    </button>
+                    
+                    <label class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold cursor-pointer transition flex items-center gap-1.5 border border-slate-700">
+                        <i class="fa-solid fa-upload"></i>
+                        <span>Upload</span>
+                        <input type="file" id="faceImageFileInput" accept="image/*" onchange="uploadFaceFromFile(this)" class="hidden">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        let socket = null;
+        let activeEnrollEmpId = null;
+        let isListeningRfid = false;
+
+        // Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('section[id^="tabContent-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = 'tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800';
+            });
+
+            const content = document.getElementById(`tabContent-${tabId}`);
+            if (content) content.classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`tabBtn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = 'tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20';
+            }
+
+            if (tabId === 'dashboard') loadDashboardData();
+            if (tabId === 'employees') loadEmployeesTable();
+            if (tabId === 'reports') applyReportFilters();
+            if (tabId === 'settings') loadSettingsForm();
+        }
+
+        // Live Nav Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('navClock').innerText = now.toLocaleTimeString('id-ID');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Initialize Socket.IO
+        function initAdminSocket() {
+            socket = io();
+
+            socket.on('admin_rfid_detected', (data) => {
+                if (isListeningRfid) {
+                    document.getElementById('empFormRfid').value = data.uid;
+                    stopListeningRfid();
+                    alert(`Kartu RFID [${data.uid}] berhasil dideteksi!`);
+                }
+            });
+
+            socket.on('attendance_result', () => {
+                // Auto refresh dashboard data on new attendance event
+                if (!document.getElementById('tabContent-dashboard').classList.contains('hidden')) {
+                    loadDashboardData();
+                }
+            });
+        }
+
+        // =================================================================
+        // DASHBOARD DATA
+        // =================================================================
+        async function loadDashboardData() {
+            try {
+                const res = await fetch('/api/stats/today');
+                const stats = await res.json();
+
+                document.getElementById('statTotalEmployees').innerText = stats.total_employees;
+                document.getElementById('statTotalScans').innerText = stats.total_scans;
+                document.getElementById('statHadir').innerText = stats.hadir;
+                document.getElementById('statTerlambat').innerText = stats.terlambat;
+                document.getElementById('statDitolak').innerText = stats.ditolak;
+
+                // Load recent 6 logs
+                const logsRes = await fetch('/api/attendance?limit=6');
+                const logs = await logsRes.json();
+                const tbody = document.getElementById('dashboardRecentLogs');
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500">Belum ada aktivitas absensi hari ini.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = logs.map(item => `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-2.5 px-3 font-mono font-bold text-slate-300">${item.timestamp}</td>
+                        <td class="py-2.5 px-3 font-semibold text-white">${item.employee_name}</td>
+                        <td class="py-2.5 px-3 text-slate-400">${item.department || '-'}</td>
+                        <td class="py-2.5 px-3 uppercase text-[10px] font-bold font-mono text-cyan-400">${item.scan_type || 'check_in'}</td>
+                        <td class="py-2.5 px-3">
+                            ${renderStatusBadge(item.status)}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Error loading dashboard:', e);
+            }
+        }
+
+        function renderStatusBadge(status) {
+            status = (status || '').toLowerCase();
+            if (status === 'hadir') {
+                return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">HADIR</span>`;
+            } else if (status === 'terlambat') {
+                return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">TERLAMBAT</span>`;
+            } else if (status === 'pulang') {
+                return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">PULANG</span>`;
+            } else {
+                return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">DITOLAK</span>`;
+            }
+        }
+
+        // =================================================================
+        // EMPLOYEES CRUD
+        // =================================================================
+        async function loadEmployeesTable() {
+            const search = document.getElementById('employeeSearchInput').value;
+            const dept = document.getElementById('employeeDeptFilter').value;
+
+            try {
+                const res = await fetch(`/api/employees?search=${encodeURIComponent(search)}&department=${encodeURIComponent(dept)}`);
+                const employees = await res.json();
+                const tbody = document.getElementById('employeesTableBody');
+
+                if (employees.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500">Tidak ada karyawan yang sesuai.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = employees.map(emp => {
+                    const initials = emp.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                    const hasFace = emp.face_samples > 0;
+
+                    return `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-3 px-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-cyan-400">
+                                        ${initials}
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-slate-100">${emp.name}</div>
+                                        <div class="text-[10px] text-slate-400">ID: ${emp.id}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 px-4 font-mono font-bold text-slate-300">${emp.nik}</td>
+                            <td class="py-3 px-4">
+                                <div class="text-slate-200">${emp.department}</div>
+                                <div class="text-[10px] text-slate-400">${emp.role || '-'}</div>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="font-mono px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-semibold text-slate-200">
+                                    ${emp.rfid_uid || '<span class="text-rose-400">Belum Terpasang</span>'}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4">
+                                ${hasFace 
+                                    ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                         <i class="fa-solid fa-check"></i> ${emp.face_samples} Sampel
+                                       </span>`
+                                    : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                         <i class="fa-solid fa-triangle-exclamation"></i> Belum Ada
+                                       </span>`
+                                }
+                            </td>
+                            <td class="py-3 px-4 text-center whitespace-nowrap">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <button onclick="openFaceEnrollModal(${emp.id}, '${emp.name.replace(/'/g, "\\'")}', ${emp.face_samples})" class="px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 text-[11px] font-semibold transition" title="Daftarkan Wajah">
+                                        <i class="fa-solid fa-face-viewfinder mr-1"></i> Biometrik
+                                    </button>
+                                    <button onclick="openEditEmployeeModal(${emp.id})" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Edit">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button onclick="deleteEmployee(${emp.id}, '${emp.name.replace(/'/g, "\\'")}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-rose-400 transition" title="Hapus">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('Error loading employees:', e);
+            }
+        }
+
+        function openAddEmployeeModal() {
+            document.getElementById('employeeModalTitle').innerHTML = '<i class="fa-solid fa-user-plus text-cyan-400"></i><span>Tambah Data Karyawan</span>';
+            document.getElementById('empFormId').value = '';
+            document.getElementById('empFormNik').value = '';
+            document.getElementById('empFormName').value = '';
+            document.getElementById('empFormDept').value = '';
+            document.getElementById('empFormRole').value = '';
+            document.getElementById('empFormRfid').value = '';
+            document.getElementById('employeeModal').classList.remove('hidden');
+        }
+
+        async function openEditEmployeeModal(empId) {
+            try {
+                const res = await fetch(`/api/employees/${empId}`);
+                const emp = await res.json();
+                document.getElementById('employeeModalTitle').innerHTML = '<i class="fa-solid fa-user-pen text-cyan-400"></i><span>Edit Data Karyawan</span>';
+                document.getElementById('empFormId').value = emp.id;
+                document.getElementById('empFormNik').value = emp.nik;
+                document.getElementById('empFormName').value = emp.name;
+                document.getElementById('empFormDept').value = emp.department;
+                document.getElementById('empFormRole').value = emp.role || '';
+                document.getElementById('empFormRfid').value = emp.rfid_uid || '';
+                document.getElementById('employeeModal').classList.remove('hidden');
+            } catch (e) {
+                alert('Gagal mengambil data karyawan: ' + e);
+            }
+        }
+
+        function closeEmployeeModal() {
+            stopListeningRfid();
+            document.getElementById('employeeModal').classList.add('hidden');
+        }
+
+        async function handleEmployeeSubmit(event) {
+            event.preventDefault();
+            const id = document.getElementById('empFormId').value;
+            const payload = {
+                nik: document.getElementById('empFormNik').value,
+                name: document.getElementById('empFormName').value,
+                department: document.getElementById('empFormDept').value,
+                role: document.getElementById('empFormRole').value,
+                rfid_uid: document.getElementById('empFormRfid').value
+            };
+
+            const url = id ? `/api/employees/${id}` : '/api/employees';
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    closeEmployeeModal();
+                    loadEmployeesTable();
+                    loadDashboardData();
+                    populateDepartmentDropdowns();
+                } else {
+                    alert(result.message);
+                }
+            } catch (e) {
+                alert('Terjadi kesalahan: ' + e);
+            }
+        }
+
+        async function deleteEmployee(id, name) {
+            if (confirm(`Yakin ingin menonaktifkan karyawan "${name}"?`)) {
+                try {
+                    const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+                    const result = await res.json();
+                    if (result.success) {
+                        loadEmployeesTable();
+                        loadDashboardData();
+                    }
+                } catch (e) {
+                    alert('Gagal menghapus: ' + e);
+                }
+            }
+        }
+
+        function startListeningRfid() {
+            isListeningRfid = true;
+            document.getElementById('rfidScanningIndicator').classList.remove('hidden');
+            if (socket) socket.emit('set_admin_listening_rfid', { active: true });
+        }
+
+        function stopListeningRfid() {
+            isListeningRfid = false;
+            document.getElementById('rfidScanningIndicator').classList.add('hidden');
+            if (socket) socket.emit('set_admin_listening_rfid', { active: false });
+        }
+
+        // =================================================================
+        // BIOMETRIC FACE ENROLLMENT
+        // =================================================================
+        function openFaceEnrollModal(empId, empName, samplesCount) {
+            activeEnrollEmpId = empId;
+            document.getElementById('enrollEmployeeNameSubtitle').innerText = `Karyawan: ${empName} (ID: ${empId})`;
+            document.getElementById('enrollSampleCountBadge').innerText = `${samplesCount} Sampel`;
+            document.getElementById('faceEnrollModal').classList.remove('hidden');
+        }
+
+        function closeFaceEnrollModal() {
+            activeEnrollEmpId = null;
+            document.getElementById('faceEnrollModal').classList.add('hidden');
+        }
+
+        async function captureFaceFromWebcam() {
+            if (!activeEnrollEmpId) {
+                alert('Silakan pilih karyawan terlebih dahulu.');
+                return;
+            }
+            const btn = document.getElementById('btnCaptureFace');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Memproses Wajah...</span>';
+
+            try {
+                const res = await fetch(`/api/employees/${activeEnrollEmpId}/enroll-face`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                let result;
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    result = await res.json();
+                } else {
+                    const text = await res.text();
+                    throw new Error(`Server status ${res.status}: ${text.slice(0, 120)}`);
+                }
+
+                if (result.success) {
+                    document.getElementById('enrollSampleCountBadge').innerText = `${result.samples_count} Sampel`;
+                    loadEmployeesTable();
+                    alert(result.message);
+                } else {
+                    alert(result.message || 'Gagal mendaftarkan sampel wajah.');
+                }
+            } catch (e) {
+                alert('Gagal mengambil sampel: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-camera"></i><span>Ambil Foto via Kamera</span>';
+            }
+        }
+
+        function uploadFaceFromFile(input) {
+            if (!input.files || !input.files[0] || !activeEnrollEmpId) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64Data = e.target.result;
+                try {
+                    const res = await fetch(`/api/employees/${activeEnrollEmpId}/enroll-face`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image_base64: base64Data })
+                    });
+                    
+                    let result;
+                    const contentType = res.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        result = await res.json();
+                    } else {
+                        const text = await res.text();
+                        throw new Error(`Server status ${res.status}: ${text.slice(0, 120)}`);
+                    }
+
+                    if (result.success) {
+                        document.getElementById('enrollSampleCountBadge').innerText = `${result.samples_count} Sampel`;
+                        loadEmployeesTable();
+                        alert('Foto wajah berhasil diunggah dan model AI telah diperbarui!');
+                    } else {
+                        alert(result.message || 'Gagal upload sampel wajah.');
+                    }
+                } catch (err) {
+                    alert('Gagal upload: ' + err.message);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // =================================================================
+        // REPORTS & LOGS
+        // =================================================================
+        async function applyReportFilters() {
+            const startDate = document.getElementById('reportStartDate').value;
+            const endDate = document.getElementById('reportEndDate').value;
+            const dept = document.getElementById('reportDeptFilter').value;
+            const status = document.getElementById('reportStatusFilter').value;
+
+            let url = `/api/attendance?limit=200`;
+            if (startDate) url += `&start_date=${startDate}`;
+            if (endDate) url += `&end_date=${endDate}`;
+            if (dept && dept !== 'ALL') url += `&department=${encodeURIComponent(dept)}`;
+            if (status && status !== 'ALL') url += `&status=${status}`;
+
+            try {
+                const res = await fetch(url);
+                const logs = await res.json();
+                const tbody = document.getElementById('reportTableBody');
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">Tidak ada data kehadiran yang cocok dengan filter.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = logs.map(r => `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-3 px-4">
+                            <div class="font-mono font-bold text-slate-200 text-xs">${r.timestamp}</div>
+                            <div class="text-[10px] text-slate-400">${r.date}</div>
+                        </td>
+                        <td class="py-3 px-4 font-mono font-bold text-slate-300">${r.rfid_uid}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-100">${r.employee_name}</td>
+                        <td class="py-3 px-4">
+                            <div class="text-slate-200">${r.department || '-'}</div>
+                            <div class="text-[10px] text-slate-400">${r.role || '-'}</div>
+                        </td>
+                        <td class="py-3 px-4 uppercase text-[10px] font-bold font-mono text-cyan-400">${r.scan_type || 'check_in'}</td>
+                        <td class="py-3 px-4 font-mono font-bold ${r.status === 'ditolak' ? 'text-rose-400' : 'text-emerald-400'}">
+                            ${r.confidence || '-'}
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            ${renderStatusBadge(r.status)}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Error loading reports:', e);
+            }
+        }
+
+        function resetReportFilters() {
+            document.getElementById('reportStartDate').value = '';
+            document.getElementById('reportEndDate').value = '';
+            document.getElementById('reportDeptFilter').value = 'ALL';
+            document.getElementById('reportStatusFilter').value = 'ALL';
+            applyReportFilters();
+        }
+
+        function exportLogsToBackendCSV() {
+            const startDate = document.getElementById('reportStartDate').value;
+            const endDate = document.getElementById('reportEndDate').value;
+            const dept = document.getElementById('reportDeptFilter').value;
+            const status = document.getElementById('reportStatusFilter').value;
+
+            let url = `/api/attendance/export?`;
+            if (startDate) url += `&start_date=${startDate}`;
+            if (endDate) url += `&end_date=${endDate}`;
+            if (dept && dept !== 'ALL') url += `&department=${encodeURIComponent(dept)}`;
+            if (status && status !== 'ALL') url += `&status=${status}`;
+
+            window.location.href = url;
+        }
+
+        // =================================================================
+        // SYSTEM SETTINGS
+        // =================================================================
+        async function loadSettingsForm() {
+            try {
+                const res = await fetch('/api/settings');
+                const cfg = await res.json();
+
+                document.getElementById('settingWorkStart').value = cfg.work_start_time || '08:00';
+                document.getElementById('settingTolerance').value = cfg.late_tolerance_minutes || '15';
+                document.getElementById('settingWorkEnd').value = cfg.work_end_time || '17:00';
+                document.getElementById('settingKioskMode').value = cfg.kiosk_mode || 'auto';
+                document.getElementById('settingSimMode').checked = (cfg.simulation_mode === 'true');
+                document.getElementById('settingSerialPort').value = cfg.serial_port || 'COM3';
+                document.getElementById('settingSerialBaud').value = cfg.serial_baudrate || '9600';
+                document.getElementById('settingCameraIndex').value = cfg.camera_index || '0';
+                document.getElementById('settingFaceThreshold').value = cfg.face_threshold || '60';
+                document.getElementById('faceThresholdValueText').innerText = (cfg.face_threshold || '60') + '%';
+            } catch (e) {
+                console.error('Error loading settings:', e);
+            }
+        }
+
+        async function saveSystemSettings() {
+            const payload = {
+                work_start_time: document.getElementById('settingWorkStart').value,
+                late_tolerance_minutes: document.getElementById('settingTolerance').value,
+                work_end_time: document.getElementById('settingWorkEnd').value,
+                kiosk_mode: document.getElementById('settingKioskMode').value,
+                simulation_mode: document.getElementById('settingSimMode').checked ? 'true' : 'false',
+                serial_port: document.getElementById('settingSerialPort').value,
+                serial_baudrate: document.getElementById('settingSerialBaud').value,
+                camera_index: document.getElementById('settingCameraIndex').value,
+                face_threshold: document.getElementById('settingFaceThreshold').value
+            };
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Pengaturan sistem berhasil disimpan!');
+                }
+            } catch (e) {
+                alert('Gagal menyimpan pengaturan: ' + e);
+            }
+        }
+
+        // Populate Department Selects
+        async function populateDepartmentDropdowns() {
+            try {
+                const res = await fetch('/api/departments');
+                const depts = await res.json();
+
+                const filter1 = document.getElementById('employeeDeptFilter');
+                const filter2 = document.getElementById('reportDeptFilter');
+
+                let opts = '<option value="ALL">Semua Departemen</option>';
+                depts.forEach(d => {
+                    opts += `<option value="${d}">${d}</option>`;
+                });
+
+                filter1.innerHTML = opts;
+                filter2.innerHTML = opts;
+            } catch (e) {
+                console.error('Error populating departments:', e);
+            }
+        }
+
+        // Init on DOM ready
+        window.addEventListener('DOMContentLoaded', () => {
+            initAdminSocket();
+            loadDashboardData();
+            populateDepartmentDropdowns();
+        });
+    </script>
+</body>
+</html>
