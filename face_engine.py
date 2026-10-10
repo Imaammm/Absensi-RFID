@@ -27,6 +27,26 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 # Load Haar Cascade
 HAAR_CASCADE_PATH = os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
 face_cascade = cv2.CascadeClassifier(HAAR_CASCADE_PATH)
+cascade_lock = threading.Lock()
+
+def detect_faces_safe(gray_image, scaleFactor=1.12, minNeighbors=4, minSize=(60, 60)):
+    """
+    Thread-safe face detection wrapper using OpenCV Haar Cascade.
+    Prevents race conditions (scaleData assertion errors) when video stream
+    and face enrollment / verification threads call detectMultiScale simultaneously.
+    """
+    with cascade_lock:
+        try:
+            return face_cascade.detectMultiScale(
+                gray_image,
+                scaleFactor=scaleFactor,
+                minNeighbors=minNeighbors,
+                minSize=minSize
+            )
+        except Exception as e:
+            print(f"[CASCADE WARNING] detectMultiScale error: {e}")
+            return ()
+
 
 class CameraManager:
     """Thread-safe Camera and Biometric Stream Handler."""
@@ -102,8 +122,8 @@ class CameraManager:
         h, w, _ = frame.shape
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Detect faces
-        faces = face_cascade.detectMultiScale(
+        # Detect faces (thread-safe)
+        faces = detect_faces_safe(
             gray,
             scaleFactor=1.15,
             minNeighbors=5,
@@ -191,6 +211,7 @@ camera_manager = CameraManager()
 # -------------------------------------------------------------------------
 class FaceRecognizerEngine:
     def __init__(self):
+        self.lock = threading.RLock()
         self.recognizer = cv2.face.LBPHFaceRecognizer_create(radius=1, neighbors=8, grid_x=8, grid_y=8)
         self.is_model_loaded = False
         self.enrolled_emp_ids = set()
@@ -198,19 +219,20 @@ class FaceRecognizerEngine:
 
     def load_model(self):
         """Loads trained LBPH model if available."""
-        if os.path.exists(MODEL_FILE):
-            try:
-                self.recognizer.read(MODEL_FILE)
-                self.is_model_loaded = True
-                print("[FACE REC] LBPH Face model loaded successfully.")
+        with self.lock:
+            if os.path.exists(MODEL_FILE):
+                try:
+                    self.recognizer.read(MODEL_FILE)
+                    self.is_model_loaded = True
+                    print("[FACE REC] LBPH Face model loaded successfully.")
+                    self._update_enrolled_ids()
+                except Exception as e:
+                    print(f"[FACE REC] Failed to load model: {e}")
+                    self.is_model_loaded = False
+            else:
                 self._update_enrolled_ids()
-            except Exception as e:
-                print(f"[FACE REC] Failed to load model: {e}")
-                self.is_model_loaded = False
-        else:
-            self._update_enrolled_ids()
-            if self.enrolled_emp_ids:
-                self.train_all_faces()
+                if self.enrolled_emp_ids:
+                    self.train_all_faces()
 
     def _update_enrolled_ids(self):
         self.enrolled_emp_ids = set()
@@ -222,36 +244,37 @@ class FaceRecognizerEngine:
 
     def train_all_faces(self):
         """Reads all face samples from data/faces/<emp_id> and trains LBPH model."""
-        faces = []
-        labels = []
+        with self.lock:
+            faces = []
+            labels = []
 
-        for emp_folder in os.listdir(FACES_DIR):
-            folder_path = os.path.join(FACES_DIR, emp_folder)
-            if not os.path.isdir(folder_path) or not emp_folder.isdigit():
-                continue
-            
-            emp_id = int(emp_folder)
-            img_files = glob.glob(os.path.join(folder_path, "*.jpg"))
-            for img_path in img_files:
-                img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-                if img is not None:
-                    resized = cv2.resize(img, (200, 200))
-                    faces.append(resized)
-                    labels.append(emp_id)
+            for emp_folder in os.listdir(FACES_DIR):
+                folder_path = os.path.join(FACES_DIR, emp_folder)
+                if not os.path.isdir(folder_path) or not emp_folder.isdigit():
+                    continue
+                
+                emp_id = int(emp_folder)
+                img_files = glob.glob(os.path.join(folder_path, "*.jpg"))
+                for img_path in img_files:
+                    img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+                    if img is not None:
+                        resized = cv2.resize(img, (200, 200))
+                        faces.append(resized)
+                        labels.append(emp_id)
 
-        if len(faces) > 0 and len(set(labels)) >= 1:
-            try:
-                self.recognizer = cv2.face.LBPHFaceRecognizer_create(radius=1, neighbors=8, grid_x=8, grid_y=8)
-                self.recognizer.train(faces, np.array(labels))
-                self.recognizer.write(MODEL_FILE)
-                self.is_model_loaded = True
-                self.enrolled_emp_ids = set(labels)
-                print(f"[FACE REC] Successfully trained model on {len(faces)} images for {len(self.enrolled_emp_ids)} employees.")
-                return True
-            except Exception as e:
-                print(f"[FACE REC] Error training model: {e}")
-                return False
-        return False
+            if len(faces) > 0 and len(set(labels)) >= 1:
+                try:
+                    self.recognizer = cv2.face.LBPHFaceRecognizer_create(radius=1, neighbors=8, grid_x=8, grid_y=8)
+                    self.recognizer.train(faces, np.array(labels))
+                    self.recognizer.write(MODEL_FILE)
+                    self.is_model_loaded = True
+                    self.enrolled_emp_ids = set(labels)
+                    print(f"[FACE REC] Successfully trained model on {len(faces)} images for {len(self.enrolled_emp_ids)} employees.")
+                    return True
+                except Exception as e:
+                    print(f"[FACE REC] Error training model: {e}")
+                    return False
+            return False
 
     def enroll_face(self, emp_id, image_bgr):
         """
@@ -262,7 +285,7 @@ class FaceRecognizerEngine:
         os.makedirs(emp_dir, exist_ok=True)
 
         gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
-        detected = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(60, 60))
+        detected = detect_faces_safe(gray, scaleFactor=1.1, minNeighbors=4, minSize=(60, 60))
 
         if len(detected) == 0:
             h, w = gray.shape
@@ -321,7 +344,7 @@ class FaceRecognizerEngine:
                     continue
 
                 gray = cv2.cvtColor(raw_frame, cv2.COLOR_BGR2GRAY)
-                faces = face_cascade.detectMultiScale(gray, scaleFactor=1.12, minNeighbors=4, minSize=(70, 70))
+                faces = detect_faces_safe(gray, scaleFactor=1.12, minNeighbors=4, minSize=(70, 70))
 
                 if len(faces) > 0:
                     fx, fy, fw, fh = max(faces, key=lambda b: b[2] * b[3])
@@ -338,7 +361,8 @@ class FaceRecognizerEngine:
                     face_roi = cv2.GaussianBlur(face_roi, (3, 3), 0)
 
                     try:
-                        label, distance = self.recognizer.predict(face_roi)
+                        with self.lock:
+                            label, distance = self.recognizer.predict(face_roi)
                         samples_tested += 1
 
                         # Calibrated LBPH Chi-Square distance formula
